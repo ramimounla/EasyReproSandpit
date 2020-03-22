@@ -1830,11 +1830,50 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
         /// <param name="field">The field</param>
         /// <param name="value">The value</param>
         /// <example>xrmApp.Entity.SetValue("firstname", "Test");</example>
+        internal BrowserCommandResult<bool> SetDialogValue(string field, string value)
+        {
+            return Execute(GetOptions("Set Value"), driver =>
+            {
+
+                var xpath = AppElements.Xpath[AppReference.Entity.TextFieldContainer].Replace("[NAME]", field);
+                xpath = "//section[contains(@id,'DialogContainer')]" + xpath;
+
+                var fieldContainer = driver.WaitUntilAvailable(By.XPath(xpath));
+
+                IWebElement input;
+                bool found = fieldContainer.TryFindElement(By.TagName("input"), out input);
+
+                if (!found)
+                    found = fieldContainer.TryFindElement(By.TagName("textarea"), out input);
+
+                if (!found)
+                    throw new NoSuchElementException($"Field with name {field} does not exist.");
+
+                SetInputValue(driver, input, value);
+
+                // Needed to transfer focus out of special fields (email or phone)
+                var label = fieldContainer.ClickIfVisible(By.TagName("label"));
+                if (label == null)
+                    driver.ClearFocus();
+
+                return true;
+            });
+        }
+
+        /// <summary>
+        /// Set Value
+        /// </summary>
+        /// <param name="field">The field</param>
+        /// <param name="value">The value</param>
+        /// <example>xrmApp.Entity.SetValue("firstname", "Test");</example>
         internal BrowserCommandResult<bool> SetValue(string field, string value)
         {
             return Execute(GetOptions("Set Value"), driver =>
             {
-                var fieldContainer = driver.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.Entity.TextFieldContainer].Replace("[NAME]", field)));
+
+                var XPath = AppElements.Xpath[AppReference.Entity.TextFieldContainer].Replace("[NAME]", field);
+
+                var fieldContainer = driver.WaitUntilAvailable(By.XPath(XPath));
 
                 IWebElement input;
                 bool found = fieldContainer.TryFindElement(By.TagName("input"), out input);
@@ -1868,6 +1907,30 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
             input.SendKeys(value, true);
             driver.WaitForTransaction();
             ThinkTime(thinktime ?? 3.Seconds());
+        }
+
+        /// <summary>
+        /// Sets the value of a Lookup, Customer, Owner or ActivityParty Lookup which accepts only a single value.
+        /// </summary>
+        /// <param name="control">The lookup field name, value or index of the lookup.</param>
+        /// <example>xrmApp.Entity.SetValue(new Lookup { Name = "prrimarycontactid", Value = "Rene Valdes (sample)" });</example>
+        /// The default index position is 0, which will be the first result record in the lookup results window. Suppy a value > 0 to select a different record if multiple are present.
+        internal BrowserCommandResult<bool> SetDialogValue(LookupItem control)
+        {
+            return Execute(GetOptions($"Set Lookup Value: {control.Name}"), driver =>
+            {
+                driver.WaitForTransaction();
+
+                var xpath = AppElements.Xpath[AppReference.Entity.TextFieldLookupFieldContainer].Replace("[NAME]", control.Name);
+                xpath = "//section[contains(@id,'DialogContainer')]" + xpath;
+
+                var fieldContainer = driver.WaitUntilAvailable(By.XPath(xpath));
+
+                TryRemoveLookupValue(driver, fieldContainer, control);
+                TrySetValue(driver, fieldContainer, control);
+
+                return true;
+            });
         }
 
         /// <summary>
@@ -2018,6 +2081,25 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
         /// </summary>
         /// <param name="control">The option you want to set.</param>
         /// <example>xrmApp.Entity.SetValue(new OptionSet { Name = "preferredcontactmethodcode", Value = "Email" });</example>
+        public BrowserCommandResult<bool> SetDialogValue(OptionSet control)
+        {
+            var controlName = control.Name;
+            return Execute(GetOptions($"Set OptionSet Value: {controlName}"), driver =>
+            {
+                var dialogXPath = AppElements.Xpath[AppReference.Entity.OptionSetFieldContainer].Replace("[NAME]", controlName);
+                dialogXPath = "//section[contains(@id,'DialogContainer')]" + dialogXPath;
+
+                var fieldContainer = driver.WaitUntilAvailable(By.XPath(dialogXPath));
+                TrySetValue(fieldContainer, control);
+                return true;
+            });
+        }
+
+        /// <summary>
+        /// Sets the value of a picklist or status field.
+        /// </summary>
+        /// <param name="control">The option you want to set.</param>
+        /// <example>xrmApp.Entity.SetValue(new OptionSet { Name = "preferredcontactmethodcode", Value = "Email" });</example>
         public BrowserCommandResult<bool> SetValue(OptionSet control)
         {
             var controlName = control.Name;
@@ -2061,6 +2143,84 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
         {
             var selectedOption = options.FirstOrDefault(op => op.Text == value || op.GetAttribute("value") == value);
             selectedOption.Click(true);
+        }
+
+        /// <summary>
+        /// Sets the value of a Boolean Item.
+        /// </summary>
+        /// <param name="option">The boolean field name.</param>
+        /// <example>xrmApp.Entity.SetValue(new BooleanItem { Name = "donotemail", Value = true });</example>
+        public BrowserCommandResult<bool> SetDialogValue(BooleanItem option)
+        {
+            return this.Execute(GetOptions($"Set BooleanItem Value: {option.Name}"), driver =>
+            {
+                var xpath = AppElements.Xpath[AppReference.Entity.TextFieldContainer].Replace("[NAME]", option.Name);
+                xpath = "//section[contains(@id,'DialogContainer')]" + xpath;
+
+                var fieldContainer = driver.WaitUntilAvailable(By.XPath(xpath));
+
+                var hasRadio = fieldContainer.HasElement(By.XPath(AppElements.Xpath[AppReference.Entity.EntityBooleanFieldRadioContainer].Replace("[NAME]", option.Name)));
+                var hasCheckbox = fieldContainer.HasElement(By.XPath(AppElements.Xpath[AppReference.Entity.EntityBooleanFieldCheckbox].Replace("[NAME]", option.Name)));
+                var hasList = fieldContainer.HasElement(By.XPath(AppElements.Xpath[AppReference.Entity.EntityBooleanFieldList].Replace("[NAME]", option.Name)));
+                var hasFlipSwitch = fieldContainer.HasElement(By.XPath(AppElements.Xpath[AppReference.Entity.EntityBooleanFieldFlipSwitchLink].Replace("[NAME]", option.Name)));
+
+                if (hasRadio)
+                {
+                    var trueRadio = fieldContainer.FindElement(By.XPath(AppElements.Xpath[AppReference.Entity.EntityBooleanFieldRadioTrue].Replace("[NAME]", option.Name)));
+                    var falseRadio = fieldContainer.FindElement(By.XPath(AppElements.Xpath[AppReference.Entity.EntityBooleanFieldRadioFalse].Replace("[NAME]", option.Name)));
+
+                    if (option.Value && bool.Parse(falseRadio.GetAttribute("aria-checked")) || !option.Value && bool.Parse(trueRadio.GetAttribute("aria-checked")))
+                    {
+                        driver.ClickWhenAvailable(By.XPath("//section[contains(@id,'DialogContainer')]" + AppElements.Xpath[AppReference.Entity.EntityBooleanFieldRadioContainer].Replace("[NAME]", option.Name)));
+                    }
+                }
+                else if (hasCheckbox)
+                {
+                    var checkbox = fieldContainer.FindElement(By.XPath(AppElements.Xpath[AppReference.Entity.EntityBooleanFieldCheckbox].Replace("[NAME]", option.Name)));
+
+                    if (option.Value && !checkbox.Selected || !option.Value && checkbox.Selected)
+                    {
+                        driver.ClickWhenAvailable(By.XPath("//section[contains(@id,'DialogContainer')]" + AppElements.Xpath[AppReference.Entity.EntityBooleanFieldCheckboxContainer].Replace("[NAME]", option.Name)));
+                    }
+                }
+                else if (hasList)
+                {
+                    var list = fieldContainer.FindElement(By.XPath(AppElements.Xpath[AppReference.Entity.EntityBooleanFieldList].Replace("[NAME]", option.Name)));
+                    var options = list.FindElements(By.TagName("option"));
+                    var selectedOption = options.FirstOrDefault(a => a.HasAttribute("data-selected") && bool.Parse(a.GetAttribute("data-selected")));
+                    var unselectedOption = options.FirstOrDefault(a => !a.HasAttribute("data-selected"));
+
+                    var trueOptionSelected = false;
+                    if (selectedOption != null)
+                    {
+                        trueOptionSelected = selectedOption.GetAttribute("value") == "1";
+                    }
+
+                    if (option.Value && !trueOptionSelected || !option.Value && trueOptionSelected)
+                    {
+                        if (unselectedOption != null)
+                        {
+                            driver.ClickWhenAvailable(By.Id(unselectedOption.GetAttribute("id")));
+                        }
+                    }
+                }
+                else if (hasFlipSwitch)
+                {
+                    var flipSwitchContainer = fieldContainer.FindElement(By.XPath(AppElements.Xpath[AppReference.Entity.EntityBooleanFieldFlipSwitchContainer].Replace("[NAME]", option.Name)));
+                    var link = flipSwitchContainer.FindElement(By.TagName("a"));
+                    var value = bool.Parse(link.GetAttribute("aria-checked"));
+
+                    if (value != option.Value)
+                    {
+                        link.Click();
+                    }
+                }
+                else
+                    throw new InvalidOperationException($"Field: {option.Name} Does not exist");
+
+
+                return true;
+            });
         }
 
         /// <summary>
@@ -2146,6 +2306,24 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
         /// <param name="formatDate">Datetime format matching Short Date formatting personal options.</param>
         /// <param name="formatTime">Datetime format matching Short Time formatting personal options.</param>
         /// <example>xrmApp.Entity.SetValue("birthdate", DateTime.Parse("11/1/1980"));</example>
+        public BrowserCommandResult<bool> SetDialogValue(string field, DateTime value, string formatDate = null, string formatTime = null)
+        {
+            var control = new DateTimeControl(field)
+            {
+                Value = value,
+                DateFormat = formatDate,
+                TimeFormat = formatTime
+            };
+            return SetDialogValue(control);
+        }
+        /// <summary>
+        /// Sets the value of a Date Field.
+        /// </summary>
+        /// <param name="field">Date field name.</param>
+        /// <param name="value">DateTime value.</param>
+        /// <param name="formatDate">Datetime format matching Short Date formatting personal options.</param>
+        /// <param name="formatTime">Datetime format matching Short Time formatting personal options.</param>
+        /// <example>xrmApp.Entity.SetValue("birthdate", DateTime.Parse("11/1/1980"));</example>
         public BrowserCommandResult<bool> SetValue(string field, DateTime value, string formatDate = null, string formatTime = null)
         {
             var control = new DateTimeControl(field)
@@ -2157,9 +2335,26 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
             return SetValue(control);
         }
 
+        public BrowserCommandResult<bool> SetDialogValue(DateTimeControl control)
+            => Execute(GetOptions($"Set Date/Time Value: {control.Name}"),
+                driver => TrySetDialogValue(driver, container: driver, control: control));
+
         public BrowserCommandResult<bool> SetValue(DateTimeControl control)
             => Execute(GetOptions($"Set Date/Time Value: {control.Name}"),
                 driver => TrySetValue(driver, container: driver, control: control));
+
+        private bool TrySetDialogValue(IWebDriver driver, ISearchContext container, DateTimeControl control)
+        {
+            TrySetDialogDateValue(driver, container, control);
+            TrySetDialogTime(driver, container, control);
+
+            if (container is IWebElement parent)
+                parent.Click(true);
+            else
+                driver.ClearFocus();
+
+            return true;
+        }
 
         private bool TrySetValue(IWebDriver driver, ISearchContext container, DateTimeControl control)
         {
@@ -2172,6 +2367,16 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
                 driver.ClearFocus();
 
             return true;
+        }
+
+        private void TrySetDialogDateValue(IWebDriver driver, ISearchContext container, DateTimeControl control)
+        {
+            string controlName = control.Name;
+            var xpath = AppElements.Xpath[AppReference.Entity.FieldControlDateTimeInputUCI].Replace("[FIELD]", controlName);
+            xpath = "//section[contains(@id,'DialogContainer')]" + xpath;
+
+            var dateField = container.WaitUntilAvailable(By.XPath(xpath), $"DateTime Field: '{controlName}' does not exist");
+            TrySetDateValue(driver, dateField, control.DateAsString);
         }
 
         private void TrySetDateValue(IWebDriver driver, ISearchContext container, DateTimeControl control)
@@ -2190,11 +2395,11 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
                 dateField.Click(); // close calendar
 
             driver.RepeatUntil(() =>
-                {
-                    ClearFieldValue(dateField);
-                    if (date != null)
-                        dateField.SendKeys(date);
-                },
+            {
+                ClearFieldValue(dateField);
+                if (date != null)
+                    dateField.SendKeys(date);
+            },
                 d => dateField.GetAttribute("value").IsValueEqualsTo(date),
                 TimeSpan.FromSeconds(9), 3,
                 failureCallback: () => throw new InvalidOperationException($"Timeout after 10 seconds. Expected: {date}. Actual: {dateField.GetAttribute("value")}")
@@ -2212,6 +2417,16 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
             ThinkTime(500);
         }
 
+        private static void TrySetDialogTime(IWebDriver driver, ISearchContext container, DateTimeControl control)
+        {
+            var xpath = AppElements.Xpath[AppReference.Entity.FieldControlDateTimeTimeInputUCI].Replace("[FIELD]", control.Name);
+            xpath = "//section[contains(@id,'DialogContainer')]" + xpath;
+
+            var success = container.TryFindElement(By.XPath(xpath), out var timeField);
+            if (success)
+                TrySetTime(driver, timeField, control.TimeAsString);
+        }
+
         private static void TrySetTime(IWebDriver driver, ISearchContext container, DateTimeControl control)
         {
             By timeFieldXPath = By.XPath(AppElements.Xpath[AppReference.Entity.FieldControlDateTimeTimeInputUCI].Replace("[FIELD]", control.Name));
@@ -2227,17 +2442,39 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
             driver.WaitForTransaction();
 
             driver.RepeatUntil(() =>
-                {
-                    timeField.Clear();
-                    timeField.Click();
-                    timeField.SendKeys(time);
-                },
+            {
+                timeField.Clear();
+                timeField.Click();
+                timeField.SendKeys(time);
+            },
                 d => timeField.GetAttribute("value").IsValueEqualsTo(time),
                 TimeSpan.FromSeconds(9), 3,
                 failureCallback: () => throw new InvalidOperationException($"Timeout after 10 seconds. Expected: {time}. Actual: {timeField.GetAttribute("value")}")
             );
         }
 
+        /// <summary>
+        /// Sets/Removes the value from the multselect type control
+        /// </summary>
+        /// <param name="option">Object of type MultiValueOptionSet containing name of the Field and the values to be set/removed</param>
+        /// <param name="removeExistingValues">False - Values will be set. True - Values will be removed</param>
+        /// <returns>True on success</returns>
+        internal BrowserCommandResult<bool> SetDialogValue(MultiValueOptionSet option, bool removeExistingValues = false)
+        {
+            return this.Execute(GetOptions($"Set MultiValueOptionSet Value: {option.Name}"), driver =>
+            {
+                if (removeExistingValues)
+                {
+                    RemoveDialogMultiOptions(option);
+                }
+                else
+                {
+                    AddMultiOptions(option);
+                }
+
+                return true;
+            });
+        }
 
         /// <summary>
         /// Sets/Removes the value from the multselect type control
@@ -2255,7 +2492,59 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
                 }
                 else
                 {
-                    AddMultiOptions(option);
+                    AddDialogMultiOptions(option);
+                }
+
+                return true;
+            });
+        }
+
+        /// <summary>
+        /// Removes the value from the multselect type control
+        /// </summary>
+        /// <param name="option">Object of type MultiValueOptionSet containing name of the Field and the values to be removed</param>
+        /// <returns></returns>
+        private BrowserCommandResult<bool> RemoveDialogMultiOptions(MultiValueOptionSet option)
+        {
+            return this.Execute(GetOptions($"Remove Multi Select Value: {option.Name}"), driver =>
+            {
+                string xpath = AppElements.Xpath[AppReference.MultiSelect.SelectedRecord].Replace("[NAME]", Elements.ElementId[option.Name]);
+                xpath = "//section[contains(@id,'DialogContainer')]" + xpath;
+
+                // If there is already some pre-selected items in the div then we must determine if it
+                // actually exists and simulate a set focus event on that div so that the input textbox
+                // becomes visible.
+                var listItems = driver.FindElements(By.XPath(xpath));
+                if (listItems.Any())
+                {
+                    listItems.First().SendKeys("");
+                }
+
+                // If there are large number of options selected then a small expand collapse 
+                // button needs to be clicked to expose all the list elements.
+                xpath = AppElements.Xpath[AppReference.MultiSelect.ExpandCollapseButton].Replace("[NAME]", Elements.ElementId[option.Name]);
+                xpath = "//section[contains(@id,'DialogContainer')]" + xpath;
+                var expandCollapseButtons = driver.FindElements(By.XPath(xpath));
+                if (expandCollapseButtons.Any())
+                {
+                    expandCollapseButtons.First().Click(true);
+                }
+
+                driver.ClickWhenAvailable(By.XPath(AppElements.Xpath[AppReference.MultiSelect.InputSearch].Replace("[NAME]", Elements.ElementId[option.Name])));
+                foreach (var optionValue in option.Values)
+                {
+                    xpath = String.Format(AppElements.Xpath[AppReference.MultiSelect.SelectedRecordButton].Replace("[NAME]", Elements.ElementId[option.Name]), optionValue);
+                    xpath = "//section[contains(@id,'DialogContainer')]" + xpath;
+                    var listItemObjects = driver.FindElements(By.XPath(xpath));
+                    var loopCounts = listItemObjects.Any() ? listItemObjects.Count : 0;
+
+                    for (int i = 0; i < loopCounts; i++)
+                    {
+                        // With every click of the button, the underlying DOM changes and the
+                        // entire collection becomes stale, hence we only click the first occurance of
+                        // the button and loop back to again find the elements and anyother occurance
+                        driver.FindElements(By.XPath(xpath)).First().Click(true);
+                    }
                 }
 
                 return true;
@@ -2304,6 +2593,57 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
                         // the button and loop back to again find the elements and anyother occurance
                         driver.FindElements(By.XPath(xpath)).First().Click(true);
                     }
+                }
+
+                return true;
+            });
+        }
+
+        /// <summary>
+        /// Sets the value from the multselect type control
+        /// </summary>
+        /// <param name="option">Object of type MultiValueOptionSet containing name of the Field and the values to be set</param>
+        /// <returns></returns>
+        private BrowserCommandResult<bool> AddDialogMultiOptions(MultiValueOptionSet option)
+        {
+            return this.Execute(GetOptions($"Add Multi Select Value: {option.Name}"), driver =>
+            {
+                string xpath = AppElements.Xpath[AppReference.MultiSelect.SelectedRecord].Replace("[NAME]", Elements.ElementId[option.Name]);
+                xpath = "//section[contains(@id,'DialogContainer')]" + xpath;
+
+                // If there is already some pre-selected items in the div then we must determine if it
+                // actually exists and simulate a set focus event on that div so that the input textbox
+                // becomes visible.
+                var listItems = driver.FindElements(By.XPath(xpath));
+                if (listItems.Any())
+                {
+                    listItems.First().SendKeys("");
+                }
+
+                driver.ClickWhenAvailable(By.XPath(AppElements.Xpath[AppReference.MultiSelect.InputSearch].Replace("[NAME]", Elements.ElementId[option.Name])));
+                foreach (var optionValue in option.Values)
+                {
+                    xpath = String.Format(AppElements.Xpath[AppReference.MultiSelect.FlyoutList].Replace("[NAME]", Elements.ElementId[option.Name]), optionValue);
+                    xpath = "//section[contains(@id,'DialogContainer')]" + xpath;
+
+                    var flyout = driver.FindElements(By.XPath(xpath));
+                    if (flyout.Any())
+                    {
+                        flyout.First().Click(true);
+                    }
+                }
+
+                // Click on the div containing textbox so that the floyout collapses or else the flyout
+                // will interfere in finding the next multiselect control which by chance will be lying
+                // behind the flyout control.
+                //driver.ClickWhenAvailable(By.XPath(AppElements.Xpath[AppReference.MultiSelect.DivContainer].Replace("[NAME]", Elements.ElementId[option.Name])));
+                xpath = AppElements.Xpath[AppReference.MultiSelect.DivContainer].Replace("[NAME]", Elements.ElementId[option.Name]);
+                xpath = "//section[contains(@id,'DialogContainer')]" + xpath;
+
+                var divElements = driver.FindElements(By.XPath(xpath));
+                if (divElements.Any())
+                {
+                    divElements.First().Click(true);
                 }
 
                 return true;
@@ -2366,6 +2706,45 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
             });
         }
 
+        internal BrowserCommandResult<string> GetDialogValue(string field)
+        {
+            return this.Execute(GetOptions($"Get Value"), driver =>
+            {
+                string text = string.Empty;
+                var RootElementXPath = AppElements.Xpath[AppReference.Entity.TextFieldContainer].Replace("[NAME]", field);
+                RootElementXPath = "//section[contains(@id,'DialogContainer')]" + RootElementXPath;
+
+                var fieldContainer = driver.WaitUntilAvailable(By.XPath(RootElementXPath));
+
+                if (fieldContainer.FindElements(By.TagName("input")).Count > 0)
+                {
+                    var input = fieldContainer.FindElement(By.TagName("input"));
+                    if (input != null)
+                    {
+                        IWebElement fieldValue = input.FindElement(By.XPath(AppElements.Xpath[AppReference.Entity.TextFieldValue].Replace("[NAME]", field)));
+                        text = fieldValue.GetAttribute("value").ToString();
+
+                        // Needed if getting a date field which also displays time as there isn't a date specifc GetValue method
+                        var timefields = driver.FindElements(By.XPath(AppElements.Xpath[AppReference.Entity.FieldControlDateTimeTimeInputUCI].Replace("[FIELD]", field)));
+                        if (timefields.Any())
+                        {
+                            text = $" {timefields.First().GetAttribute("value")}";
+                        }
+                    }
+                }
+                else if (fieldContainer.FindElements(By.TagName("textarea")).Count > 0)
+                {
+                    text = fieldContainer.FindElement(By.TagName("textarea")).GetAttribute("value");
+                }
+                else
+                {
+                    throw new Exception($"Field with name {field} does not exist.");
+                }
+
+                return text;
+            });
+        }
+
         internal BrowserCommandResult<string> GetValue(string field)
         {
             return this.Execute(GetOptions($"Get Value"), driver =>
@@ -2399,6 +2778,25 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
                 }
 
                 return text;
+            });
+        }
+
+        /// <summary>
+        /// Gets the value of a Lookup.
+        /// </summary>
+        /// <param name="control">The lookup field name of the lookup.</param>
+        /// <example>xrmApp.Entity.GetValue(new Lookup { Name = "primarycontactid" });</example>
+        public BrowserCommandResult<string> GetDialogValue(LookupItem control)
+        {
+            var controlName = control.Name;
+            return Execute($"Get Lookup Value: {controlName}", driver =>
+            {
+                var xpathToContainer = AppElements.Xpath[AppReference.Entity.TextFieldLookupFieldContainer].Replace("[NAME]", controlName);
+                xpathToContainer = "//section[contains(@id,'DialogContainer')]" + xpathToContainer;
+
+                IWebElement fieldContainer = driver.WaitUntilAvailable(By.XPath(xpathToContainer));
+                string lookupValue = TryGetValue(fieldContainer, control);
+                return lookupValue;
             });
         }
 
@@ -2485,6 +2883,25 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
         /// </summary>
         /// <param name="control">The option you want to set.</param>
         /// <example>xrmApp.Entity.GetValue(new OptionSet { Name = "preferredcontactmethodcode"}); </example>
+        internal BrowserCommandResult<string> GetDialogValue(OptionSet control)
+        {
+            var controlName = control.Name;
+            return this.Execute($"Get OptionSet Value: {controlName}", driver =>
+            {
+                var xpath = AppElements.Xpath[AppReference.Entity.OptionSetFieldContainer].Replace("[NAME]", controlName);
+                xpath = "//section[contains(@id,'DialogContainer')]" + xpath;
+
+                var fieldContainer = driver.WaitUntilAvailable(By.XPath(xpath));
+                string result = TryGetValue(fieldContainer, control);
+                return result;
+            });
+        }
+
+        /// <summary>
+        /// Gets the value of a picklist or status field.
+        /// </summary>
+        /// <param name="control">The option you want to set.</param>
+        /// <example>xrmApp.Entity.GetValue(new OptionSet { Name = "preferredcontactmethodcode"}); </example>
         internal BrowserCommandResult<string> GetValue(OptionSet control)
         {
             var controlName = control.Name;
@@ -2523,6 +2940,56 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
         {
             var selectedOption = options.FirstOrDefault(op => op.Selected);
             return selectedOption?.Text ?? string.Empty;
+        }
+
+        /// <summary>
+        /// Sets the value of a Boolean Item.
+        /// </summary>
+        /// <param name="option">The boolean field name.</param>
+        /// <example>xrmApp.Entity.GetValue(new BooleanItem { Name = "creditonhold" });</example>
+        internal BrowserCommandResult<bool> GetDialogValue(BooleanItem option)
+        {
+            return this.Execute($"Get BooleanItem Value: {option.Name}", driver =>
+            {
+                var check = false;
+
+                var xpath = AppElements.Xpath[AppReference.Entity.TextFieldContainer].Replace("[NAME]", option.Name);
+                xpath = "//section[contains(@id,'DialogContainer')]" + xpath;
+
+                var fieldContainer = driver.WaitUntilAvailable(By.XPath(xpath));
+
+                var hasRadio = fieldContainer.HasElement(By.XPath(AppElements.Xpath[AppReference.Entity.EntityBooleanFieldRadioContainer].Replace("[NAME]", option.Name)));
+                var hasCheckbox = fieldContainer.HasElement(By.XPath(AppElements.Xpath[AppReference.Entity.EntityBooleanFieldCheckbox].Replace("[NAME]", option.Name)));
+                var hasList = fieldContainer.HasElement(By.XPath(AppElements.Xpath[AppReference.Entity.EntityBooleanFieldList].Replace("[NAME]", option.Name)));
+
+                if (hasRadio)
+                {
+                    var trueRadio = fieldContainer.FindElement(By.XPath(AppElements.Xpath[AppReference.Entity.EntityBooleanFieldRadioTrue].Replace("[NAME]", option.Name)));
+
+                    check = bool.Parse(trueRadio.GetAttribute("aria-checked"));
+                }
+                else if (hasCheckbox)
+                {
+                    var checkbox = fieldContainer.FindElement(By.XPath(AppElements.Xpath[AppReference.Entity.EntityBooleanFieldCheckbox].Replace("[NAME]", option.Name)));
+
+                    check = bool.Parse(checkbox.GetAttribute("aria-checked"));
+                }
+                else if (hasList)
+                {
+                    var list = fieldContainer.FindElement(By.XPath(AppElements.Xpath[AppReference.Entity.EntityBooleanFieldList].Replace("[NAME]", option.Name)));
+                    var options = list.FindElements(By.TagName("option"));
+                    var selectedOption = options.FirstOrDefault(a => a.HasAttribute("data-selected") && bool.Parse(a.GetAttribute("data-selected")));
+
+                    if (selectedOption != null)
+                    {
+                        check = int.Parse(selectedOption.GetAttribute("value")) == 1;
+                    }
+                }
+                else
+                    throw new InvalidOperationException($"Field: {option.Name} Does not exist");
+
+                return check;
+            });
         }
 
         /// <summary>
@@ -2569,6 +3036,41 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
                     throw new InvalidOperationException($"Field: {option.Name} Does not exist");
 
                 return check;
+            });
+        }
+
+        /// <summary>
+        /// Gets the value from the multselect type control
+        /// </summary>
+        /// <param name="option">Object of type MultiValueOptionSet containing name of the Field</param>
+        /// <returns>MultiValueOptionSet object where the values field contains all the contact names</returns>
+        internal BrowserCommandResult<MultiValueOptionSet> GetDialogValue(MultiValueOptionSet option)
+        {
+            return this.Execute(GetOptions($"Get Multi Select Value: {option.Name}"), driver =>
+            {
+                // If there are large number of options selected then a small expand collapse 
+                // button needs to be clicked to expose all the list elements.
+                string xpath = AppElements.Xpath[AppReference.MultiSelect.ExpandCollapseButton].Replace("[NAME]", Elements.ElementId[option.Name]);
+                xpath = "//section[contains(@id,'DialogContainer')]" + xpath;
+
+                var expandCollapseButtons = driver.FindElements(By.XPath(xpath));
+                if (expandCollapseButtons.Any())
+                {
+                    expandCollapseButtons.First().Click(true);
+                }
+
+                var returnValue = new MultiValueOptionSet { Name = option.Name };
+
+                xpath = AppElements.Xpath[AppReference.MultiSelect.SelectedRecordLabel].Replace("[NAME]", Elements.ElementId[option.Name]);
+                xpath = "//section[contains(@id,'DialogContainer')]" + xpath;
+
+                var labelItems = driver.FindElements(By.XPath(xpath));
+                if (labelItems.Any())
+                {
+                    returnValue.Values = labelItems.Select(x => x.Text).ToArray();
+                }
+
+                return returnValue;
             });
         }
 
@@ -2996,12 +3498,38 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
             => Execute(GetOptions($"Clear Field: {control.Name}"),
                 driver => TrySetValue(driver, container: driver, control: new DateTimeControl(control.Name))); // Pass an empty control
 
+
+
+        internal BrowserCommandResult<bool> ClearDialogValue(string fieldName)
+        {
+            return this.Execute(GetOptions($"Clear Field {fieldName}"), driver =>
+            {
+                SetDialogValue(fieldName, string.Empty);
+
+                return true;
+            });
+        }
+
         internal BrowserCommandResult<bool> ClearValue(string fieldName)
         {
             return this.Execute(GetOptions($"Clear Field {fieldName}"), driver =>
             {
                 SetValue(fieldName, string.Empty);
 
+                return true;
+            });
+        }
+
+        internal BrowserCommandResult<bool> ClearDialogValue(LookupItem control, bool removeAll = true)
+        {
+            var controlName = control.Name;
+            return Execute(GetOptions($"Clear Field {controlName}"), driver =>
+            {
+                var xpath = AppElements.Xpath[AppReference.Entity.TextFieldLookupFieldContainer].Replace("[NAME]", controlName);
+                xpath = "//section[contains(@id,'DialogContainer')]" + xpath;
+
+                var fieldContainer = driver.WaitUntilAvailable(By.XPath(xpath));
+                TryRemoveLookupValue(driver, fieldContainer, control, removeAll);
                 return true;
             });
         }
@@ -3085,12 +3613,34 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
             existingValue.Click(true);
         }
 
+        internal BrowserCommandResult<bool> ClearDialogValue(OptionSet control)
+        {
+            return this.Execute(GetOptions($"Clear Field {control.Name}"), driver =>
+            {
+                control.Value = "-1";
+                SetDialogValue(control);
+
+                return true;
+            });
+        }
+
         internal BrowserCommandResult<bool> ClearValue(OptionSet control)
         {
             return this.Execute(GetOptions($"Clear Field {control.Name}"), driver =>
             {
                 control.Value = "-1";
                 SetValue(control);
+
+                return true;
+            });
+        }
+
+
+        internal BrowserCommandResult<bool> ClearDialogValue(MultiValueOptionSet control)
+        {
+            return this.Execute(GetOptions($"Clear Field {control.Name}"), driver =>
+            {
+                RemoveDialogMultiOptions(control);
 
                 return true;
             });
@@ -3307,7 +3857,7 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
                     return notifications;
 
                 // If there are multiple notifications, the notifications must be expanded first.
-                if(notificationBar.TryFindElement(By.XPath(AppElements.Xpath[AppReference.Entity.FormNotifcationExpandButton]), out var expandButton))
+                if (notificationBar.TryFindElement(By.XPath(AppElements.Xpath[AppReference.Entity.FormNotifcationExpandButton]), out var expandButton))
                 {
                     if (!Convert.ToBoolean(notificationBar.GetAttribute("aria-expanded")))
                         expandButton.Click();
