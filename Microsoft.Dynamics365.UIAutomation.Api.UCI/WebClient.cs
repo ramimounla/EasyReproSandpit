@@ -1695,6 +1695,23 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
             });
         }
 
+
+        internal BrowserCommandResult<bool> CancelDialog(int thinkTime = Constants.DefaultThinkTime)
+        {
+            ThinkTime(thinkTime);
+
+            return this.Execute(GetOptions($"Cancel Quick Create"), driver =>
+            {
+                var save = driver.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.ModalDialog.CancelButton]),
+                    "Quick Create Cancel Button is not available");
+                save?.Click(true);
+
+                driver.WaitForTransaction();
+
+                return true;
+            });
+        }
+
         /// <summary>
         /// Open Entity
         /// </summary>
@@ -1868,10 +1885,22 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
         /// <example>xrmApp.Entity.SetValue("firstname", "Test");</example>
         internal BrowserCommandResult<bool> SetValue(string field, string value)
         {
+            return SetValueWithXPathPrefix(field, value, string.Empty);
+        }
+
+        /// <summary>
+        /// Set Value
+        /// </summary>
+        /// <param name="field">The field</param>
+        /// <param name="value">The value</param>
+        /// <param name="xPathPrefix">XPath prefix to locate the element (e.g. QuickCreate section or Modal Dialog Section(</param>
+        /// <example>xrmApp.Entity.SetValueWithXPathPrefix("firstname", "Test", "//section[contains(@id,'DialogContainer')]");</example>
+        internal BrowserCommandResult<bool> SetValueWithXPathPrefix(string field, string value, string xPathPrefix)
+        {
             return Execute(GetOptions("Set Value"), driver =>
             {
 
-                var XPath = AppElements.Xpath[AppReference.Entity.TextFieldContainer].Replace("[NAME]", field);
+                var XPath = xPathPrefix + AppElements.Xpath[AppReference.Entity.TextFieldContainer].Replace("[NAME]", field);
 
                 var fieldContainer = driver.WaitUntilAvailable(By.XPath(XPath));
 
