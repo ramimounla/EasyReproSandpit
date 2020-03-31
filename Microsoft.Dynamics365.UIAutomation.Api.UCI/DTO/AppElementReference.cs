@@ -242,6 +242,13 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
             public static string CancelButton = "QuickCreate_CancelButton";
         }
 
+        public static class ModalDialog
+        {
+            public static string SaveButton = "ModalDialog_SaveButton";
+            public static string SaveAndCloseButton = "ModalDialog_SaveAndCloseButton";
+            public static string CancelButton = "ModalDialog_CancelButton";
+        }
+
         public static class Lookup
         {
             public static string RelatedEntityLabel = "Lookup_RelatedEntityLabel";
@@ -487,7 +494,12 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
             { "QuickCreate_SaveButton" , "//button[contains(@id,'quickCreateSaveBtn')]" },
             { "QuickCreate_SaveAndCloseButton", "//button[contains(@id,'quickCreateSaveAndCloseBtn')]"},
             { "QuickCreate_CancelButton", "//button[contains(@id,'quickCreateCancelBtn')]"},
-
+            
+            //ModalDialog 
+            { "ModalDialog_SaveButton" , "//section[contains(@id,'DialogContainer')]//button[contains(@data-id, 'form-save-btn')]" },
+            { "ModalDialog_SaveAndCloseButton", "//button[contains(@id,'quickCreateSaveAndCloseBtn')]"},
+            { "ModalDialog_CancelButton", "//section[contains(@id,'DialogContainer')]//button[contains(@id,'CloseIconButton')]"},
+            
             //Lookup
             { "Lookup_RelatedEntityLabel", "//li[contains(@title,'[NAME]') and contains(@data-id,'LookupResultsDropdown')]" },
             { "Lookup_ChangeViewButton", "//button[contains(@data-id,'changeViewBtn')]"},
