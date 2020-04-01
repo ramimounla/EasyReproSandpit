@@ -237,6 +237,7 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
 
         public static class QuickCreate
         {
+            public static string TextFieldContainer = "QuickCreate_TextFieldContainer";
             public static string SaveButton = "QuickCreate_SaveButton";
             public static string SaveAndCloseButton = "QuickCreate_SaveAndCloseButton";
             public static string CancelButton = "QuickCreate_CancelButton";
@@ -491,6 +492,7 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
             { "SwitchProcess_Container" , "//section[contains(@id, 'popupContainer')]" },
 			
             //QuickCreate 
+            { "QuickCreate_TextFieldContainer", "//section[contains(@id,'DialogContainer')]//*[contains(@id, \'[NAME]-FieldSectionItemContainer\')]" },
             { "QuickCreate_SaveButton" , "//button[contains(@id,'quickCreateSaveBtn')]" },
             { "QuickCreate_SaveAndCloseButton", "//button[contains(@id,'quickCreateSaveAndCloseBtn')]"},
             { "QuickCreate_CancelButton", "//button[contains(@id,'quickCreateCancelBtn')]"},

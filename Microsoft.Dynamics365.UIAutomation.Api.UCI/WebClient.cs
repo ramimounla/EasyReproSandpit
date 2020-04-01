@@ -1929,6 +1929,41 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
         /// <param name="value">The value</param>
         /// <param name="xPathPrefix">XPath prefix to locate the element (e.g. QuickCreate section or Modal Dialog Section(</param>
         /// <example>xrmApp.Entity.SetValueWithXPathPrefix("firstname", "Test", "//section[contains(@id,'DialogContainer')]");</example>
+        internal BrowserCommandResult<bool> SetQuickCreateValue(string field, string value)
+        {
+            return Execute(GetOptions("Set Value"), driver =>
+            {
+                var XPath =  AppElements.Xpath[AppReference.QuickCreate.TextFieldContainer].Replace("[NAME]", field);
+
+                var fieldContainer = driver.WaitUntilAvailable(By.XPath(XPath));
+
+                IWebElement input;
+                bool found = fieldContainer.TryFindElement(By.TagName("input"), out input);
+
+                if (!found)
+                    found = fieldContainer.TryFindElement(By.TagName("textarea"), out input);
+
+                if (!found)
+                    throw new NoSuchElementException($"Field with name {field} does not exist.");
+
+                SetInputValue(driver, input, value);
+
+                // Needed to transfer focus out of special fields (email or phone)
+                var label = fieldContainer.ClickIfVisible(By.TagName("label"));
+                if (label == null)
+                    driver.ClearFocus();
+
+                return true;
+            });
+        }
+
+        /// <summary>
+        /// Set Value
+        /// </summary>
+        /// <param name="field">The field</param>
+        /// <param name="value">The value</param>
+        /// <param name="xPathPrefix">XPath prefix to locate the element (e.g. QuickCreate section or Modal Dialog Section(</param>
+        /// <example>xrmApp.Entity.SetValueWithXPathPrefix("firstname", "Test", "//section[contains(@id,'DialogContainer')]");</example>
         internal BrowserCommandResult<bool> SetValueWithXPathPrefix(string field, string value, string xPathPrefix)
         {
             return Execute(GetOptions("Set Value"), driver =>
