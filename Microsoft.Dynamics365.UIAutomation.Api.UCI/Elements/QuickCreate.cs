@@ -116,7 +116,9 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
         /// <param name="value">Value of the field</param>
         public void SetValue(string field, string value)
         {
-            _client.SetValueWithXPathPrefix(field, value, xPathPrefix);
+            _client.SetQuickCreateValue(field, value);
+            //_client.SetValueWithXPathPrefix(field, value, xPathPrefix);
+            //_client.SetValue(field, value);
         }
 
         /// <summary>

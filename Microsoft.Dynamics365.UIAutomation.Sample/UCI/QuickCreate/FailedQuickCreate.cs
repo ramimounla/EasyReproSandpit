@@ -21,17 +21,15 @@ namespace Microsoft.Dynamics365.UIAutomation.Sample.UCI
                 xrmApp.Navigation.OpenApp(UCIAppName.Sales);
 
                 xrmApp.Navigation.OpenSubArea("Sales", "Contacts");
+                xrmApp.Grid.OpenRecord(0);
 
-                xrmApp.CommandBar.ClickCommand("New");
+                xrmApp.Entity.SetValue("firstname", "Root Element");
 
-                xrmApp.Entity.SetValue("firstname", TestSettings.GetRandomString(5, 10));
+                xrmApp.Entity.AddSubgridItem("contact");
 
-                xrmApp.Navigation.QuickCreate("contact");
-                xrmApp.QuickCreate.SetValue("firstname", TestSettings.GetRandomString(5, 10));
+                //xrmApp.Navigation.QuickCreate("contact");
 
-                xrmApp.QuickCreate.Cancel();
-                
-                xrmApp.Dialogs.ConfirmationDialog(false);
+                xrmApp.QuickCreate.SetValue("firstname", "Quick Create");
             }
         }
     }
