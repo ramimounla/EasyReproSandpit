@@ -1700,6 +1700,7 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
         {
             ThinkTime(thinkTime);
 
+            //TODO rename for options
             return this.Execute(GetOptions($"Cancel Quick Create"), driver =>
             {
                 var save = driver.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.ModalDialog.CancelButton]),
@@ -1711,6 +1712,39 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
                 return true;
             });
         }
+
+        internal BrowserCommandResult<bool> SaveDialog(int thinkTime = Constants.DefaultThinkTime)
+        {
+            ThinkTime(thinkTime);
+
+            return this.Execute(GetOptions($"Cancel Quick Create"), driver =>
+            {
+                var save = driver.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.ModalDialog.SaveButton]),
+                    "Quick Create Cancel Button is not available");
+                save?.Click(true);
+
+                driver.WaitForTransaction();
+
+                return true;
+            });
+        }
+
+        internal BrowserCommandResult<bool> SaveAndCloseDialog(int thinkTime = Constants.DefaultThinkTime)
+        {
+            ThinkTime(thinkTime);
+
+            return this.Execute(GetOptions($"Cancel Quick Create"), driver =>
+            {
+                var save = driver.WaitUntilAvailable(By.XPath(AppElements.Xpath[AppReference.ModalDialog.SaveAndCloseButton]),
+                    "Quick Create Cancel Button is not available");
+                save?.Click(true);
+
+                driver.WaitForTransaction();
+
+                return true;
+            });
+        }
+
 
         /// <summary>
         /// Open Entity

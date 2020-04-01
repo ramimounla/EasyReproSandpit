@@ -496,10 +496,10 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
             { "QuickCreate_CancelButton", "//button[contains(@id,'quickCreateCancelBtn')]"},
             
             //ModalDialog 
-            { "ModalDialog_SaveButton" , "//section[contains(@id,'DialogContainer')]//button[contains(@data-id, 'form-save-btn')]" },
-            { "ModalDialog_SaveAndCloseButton", "//button[contains(@id,'quickCreateSaveAndCloseBtn')]"},
+            { "ModalDialog_SaveButton" , "//section[contains(@id,'DialogContainer')]//button[contains(@data-id, 'Save')]" },
+            { "ModalDialog_SaveAndCloseButton", "//section[contains(@id,'DialogContainer')]//button[contains(@data-id, 'SaveAndClose')]"},
             { "ModalDialog_CancelButton", "//section[contains(@id,'DialogContainer')]//button[contains(@id,'CloseIconButton')]"},
-            
+
             //Lookup
             { "Lookup_RelatedEntityLabel", "//li[contains(@title,'[NAME]') and contains(@data-id,'LookupResultsDropdown')]" },
             { "Lookup_ChangeViewButton", "//button[contains(@data-id,'changeViewBtn')]"},

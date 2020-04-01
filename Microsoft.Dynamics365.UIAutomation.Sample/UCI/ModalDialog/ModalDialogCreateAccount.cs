@@ -23,12 +23,14 @@ namespace Microsoft.Dynamics365.UIAutomation.Sample.UCI
                 xrmApp.Navigation.OpenSubArea("Sales", "Accounts");
                 xrmApp.CommandBar.ClickCommand("New");
 
-                xrmApp.Entity.SetValue("name", "Main Form Account Name");
+                //xrmApp.Entity.SetValue("name", "Main Form Account Name");
 
-                client.Browser.Driver.ExecuteScript("Xrm.Navigation.navigateTo({pageType:'entityrecord', entityName:'account', formType:2},{target: 2, position: 2, width: {value: 80, unit:'%'}})");
+                client.Browser.Driver.ExecuteScript("Xrm.Navigation.navigateTo({pageType:'entityrecord', entityName:'account', formType:2},{target: 2, position: 1, width: {value: 80, unit:'%'}})");
                 
                 xrmApp.ModalDialog.SetValue("name", "Modal Dialog Account Name");
 
+                //xrmApp.ModalDialog.Save();
+                //xrmApp.ModalDialog.SaveAndClose();
                 xrmApp.ModalDialog.Cancel();
                 xrmApp.Dialogs.ConfirmationDialog(false);
 

@@ -22,6 +22,20 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
         }
 
         /// <summary>
+        /// Click the Save button on the quick create form
+        /// </summary>
+        public void Save()
+        {
+            _client.SaveDialog();
+        }
+
+        /// </summary>
+        public void SaveAndClose()
+        {
+            _client.SaveAndCloseDialog();
+        }
+
+        /// <summary>
         /// Clears a value from the text or date field provided
         /// </summary>
         /// <param name="field"></param>
