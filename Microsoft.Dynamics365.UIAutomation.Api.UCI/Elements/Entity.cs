@@ -285,9 +285,9 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
         /// Gets the value of a MultiValueOptionSet.
         /// </summary>
         /// <param name="option">The option you want to set.</param>
-        public void GetValue(MultiValueOptionSet option)
+        public MultiValueOptionSet GetValue(MultiValueOptionSet option)
         {
-            _client.GetValue(option);
+            return _client.GetValue(option);
         }
 
         /// <summary>
