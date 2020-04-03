@@ -245,6 +245,7 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
 
         public static class ModalDialog
         {
+            public static string TextFieldContainer = "ModalDialog_TextFieldContainer";
             public static string SaveButton = "ModalDialog_SaveButton";
             public static string SaveAndCloseButton = "ModalDialog_SaveAndCloseButton";
             public static string CancelButton = "ModalDialog_CancelButton";
@@ -498,6 +499,7 @@ namespace Microsoft.Dynamics365.UIAutomation.Api.UCI
             { "QuickCreate_CancelButton", "//button[contains(@id,'quickCreateCancelBtn')]"},
             
             //ModalDialog 
+            { "ModalDialog_TextFieldContainer", "//section[contains(@id,'DialogContainer')]//*[contains(@id, \'[NAME]-FieldSectionItemContainer\')]" },
             { "ModalDialog_SaveButton" , "//section[contains(@id,'DialogContainer')]//button[contains(@data-id, 'Save')]" },
             { "ModalDialog_SaveAndCloseButton", "//section[contains(@id,'DialogContainer')]//button[contains(@data-id, 'SaveAndClose')]"},
             { "ModalDialog_CancelButton", "//section[contains(@id,'DialogContainer')]//button[contains(@id,'CloseIconButton')]"},
